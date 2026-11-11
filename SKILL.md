@@ -1,5 +1,5 @@
 ---
-name: stockport-bins
+name: stockport-bin-skill
 description: >-
   Use this skill when the user asks "what bin day is it", "what bin should I put
   out", or asks about their Stockport Council bin collection schedule (Black,
