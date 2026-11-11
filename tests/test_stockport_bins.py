@@ -1,6 +1,15 @@
-import unittest
 from datetime import date
-from stockport_bins import StockportBinHTMLParser, parse_uk_date, summarize_next_collection
+from pathlib import Path
+import sys
+import unittest
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+
+from stockport_bins import (  # noqa: E402
+    StockportBinHTMLParser,
+    parse_uk_date,
+    summarize_next_collection,
+)
 
 
 SAMPLE_STOCKPORT_HTML = """
