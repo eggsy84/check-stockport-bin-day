@@ -7,7 +7,15 @@ Once added to your Google account, you can ask Gemini:
 - *"What bin should I put out?"*
 - *"When is bin day?"*
 
-On your first ask, Gemini will guide you to grab your Stockport Council property number (**UPRN**), save it to **Gemini's Memory / Saved Info** so you never have to enter it again, and check your live [Stockport Metropolitan Borough Council](https://www.stockport.gov.uk/find-your-collection-day) collection schedule to tell you which bin(s) (**Black**, **Blue**, **Brown**, and/or **Green**) need to go out next.
+---
+
+## Why This Skill Uses Hybrid Live-Fetch + Memory Anchor Dates
+
+Stockport Council's portal (`myaccount.stockport.gov.uk/bin-collections/show/<UPRN>`) uses bot/firewall rules and `noindex` headers that frequently block automated AI web crawlers — even when the link opens fine in your personal browser.
+
+To make responses **fast and 100% reliable**, this skill uses a two-layer approach:
+1. **Live Fetch (When Accessible)**: Gemini checks `https://myaccount.stockport.gov.uk/bin-collections/show/<UPRN>` and refreshes your saved schedule in **Gemini's Memory / Saved Info**.
+2. **Instant Anchor-Date Calculation (When Crawler Is Blocked)**: Because Stockport bin collections follow fixed repeating intervals from any known collection date (**Green**: every 7 days, **Black**: every 14 days, **Brown**: every 28 days, **Blue**: every 28 or 14 days), Gemini stores one snapshot of your 4 bin dates in **Memory** and calculates your upcoming collections mathematically whenever `myaccount.stockport.gov.uk` blocks automated crawlers.
 
 ---
 
@@ -17,25 +25,14 @@ On your first ask, Gemini will guide you to grab your Stockport Council property
 check-stockport-bin-day/
 ├── SKILL.md                          # Main skill manifest (YAML frontmatter + instructions)
 ├── references/
-│   └── stockport-bin-guide.md        # Reference guide for Stockport bin colours & UPRN lookup
+│   └── stockport-bin-guide.md        # Reference guide: bin colours, cycle math & UPRN lookup
 ├── README.md                         # Setup and usage documentation
 └── LICENSE                           # Repository license
 ```
 
-### Alignment with Google's Official Skill Guidelines
-Per [support.google.com/gemini/answer/17102773](https://support.google.com/gemini/answer/17102773), this skill is designed around:
-1. **Matching Directory & Action-Verb Name**: Both the skill directory and the `name` field in [`SKILL.md`](./SKILL.md) use the lowercase, hyphenated action-verb identifier `check-stockport-bin-day`, paired with an explicit trigger `description` so Gemini activates the skill automatically when you ask about your bins.
-2. **Zero-Config Onboarding via Gemini Memory**: No files need to be edited before uploading. If Gemini doesn't know your Stockport UPRN yet, it walks you through finding it and saves it to **Gemini's Memory / Saved Info** for all future conversations.
-3. **Concise "Cheat Sheet" Instructions**: [`SKILL.md`](./SKILL.md) is structured into four focused sections:
-   - **Step-by-Step Instructions** for checking memory, saving a new UPRN, fetching live dates, and comparing against today's UK date.
-   - **Rules for Missing Information** (guided first-time setup when no UPRN is stored yet, plus fallback if the council site is unreachable).
-   - **Formatting Rules** (concise <120-word bulleted output grouping same-day collections).
-   - **Common Mistakes to Avoid** (never guessing dates, never omitting co-collected bins, no conversational filler).
-4. **Supplemental Reference File**: [`references/stockport-bin-guide.md`](./references/stockport-bin-guide.md) stores the Stockport bin colour/contents table and UPRN lookup guide separately so [`SKILL.md`](./SKILL.md) stays lean.
-
 ---
 
-## Step 1: Install into Your Google Gemini Account (No File Editing Required)
+## Step 1: Install into Your Google Gemini Account
 
 1. Go to **[gemini.google.com](https://gemini.google.com)**.
 2. In the left sidebar, select **Customize** (or **More → Customize**), then click **Skills**.
@@ -51,19 +48,10 @@ Per [support.google.com/gemini/answer/17102773](https://support.google.com/gemin
 
 ---
 
-## Step 2: How to Use It in Gemini
+## Step 2: One-Time Onboarding in Chat
 
-1. Ask Gemini:
-   - *"What bin day is it?"*
-   - *"What bin should I put out?"*
-   - *(Or type `/check-stockport-bin-day` in the chat box)*
-2. **First-Time Setup**: The first time you ask, Gemini will prompt you to look up your address at [stockport.gov.uk/find-your-collection-day](https://www.stockport.gov.uk/find-your-collection-day) and paste the resulting URL (e.g. `https://myaccount.stockport.gov.uk/bin-collections/show/12345678910`) or the UPRN number at the end.
-3. Gemini will **save your UPRN to its Memory** and immediately tell you which bin(s) to put out. On every future ask, it will remember your UPRN automatically.
-
----
-
-## Optional: Install via Gemini CLI
-
-```bash
-gemini skills install https://github.com/eggsy84/stockport-bin-skill.git
-```
+1. Ask Gemini: *"What bin day is it?"* (or type `/check-stockport-bin-day`).
+2. Gemini will prompt you to open [stockport.gov.uk/find-your-collection-day](https://www.stockport.gov.uk/find-your-collection-day) and paste:
+   - Your property URL (e.g. `https://myaccount.stockport.gov.uk/bin-collections/show/10090543805`), **and**
+   - A quick copy-paste (or screenshot) of the 4 upcoming bin dates displayed on that page.
+3. Gemini saves both your **UPRN** and those **4 Anchor Dates** into **Gemini's Memory / Saved Info**. From that point on, every time you ask *"What bin should I put out?"*, Gemini answers immediately — even if Stockport Council's firewall blocks web crawlers.
