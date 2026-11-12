@@ -1,4 +1,4 @@
-# Check UK Bin Day (`check-stockport-bin-day`)
+# Check UK Bin Day (`what-bin-day-is-it`)
 
 A zero-config **Google Gemini Skill** for **any UK address**, structured according to Google's official guidance ([Write effective skills for Gemini Apps](https://support.google.com/gemini/answer/17102773)) and powered by **[WhenIsBins (`whenisbins.com`)](https://whenisbins.com)**.
 
@@ -25,7 +25,7 @@ Gemini will return a concise message telling you when your next collection day i
 ## Repository Structure
 
 ```text
-check-stockport-bin-day/
+what-bin-day-is-it/
 ├── SKILL.md                          # Main skill manifest (YAML frontmatter + instructions)
 ├── references/
 │   └── whenisbins-api-guide.md       # Reference guide: WhenIsBins /v1 API & schedule math
@@ -46,9 +46,9 @@ check-stockport-bin-day/
    - **Upload `SKILL.md` & Reference File**: Select [`SKILL.md`](./SKILL.md), then attach [`references/whenisbins-api-guide.md`](./references/whenisbins-api-guide.md) under reference files.
    - **Upload as a `.zip`**: Package only `SKILL.md` and `references/` (excluding `.git` and `LICENSE`, which Gemini rejects as unsupported file types):
      ```bash
-     zip -r check-stockport-bin-day.zip SKILL.md references/ -x "*.DS_Store"
+     zip -r what-bin-day-is-it.zip SKILL.md references/ -x "*.DS_Store"
      ```
-     Then upload `check-stockport-bin-day.zip` in the Gemini upload dialog.
+     Then upload `what-bin-day-is-it.zip` in the Gemini upload dialog.
 5. Click **Create**.
 
 ---
@@ -67,5 +67,5 @@ check-stockport-bin-day/
 ## Optional: Install via Gemini CLI
 
 ```bash
-gemini skills install https://github.com/eggsy84/stockport-bin-skill.git
+gemini skills install https://github.com/eggsy84/what-bin-day-is-it.git
 ```
