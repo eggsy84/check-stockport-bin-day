@@ -1,52 +1,61 @@
-# WhenIsBins (`whenisbins.com`) UK Bin Collection API Reference Guide
+# WhenIsBins (`whenisbins.com`) MCP Server Reference Guide
 
-**WhenIsBins** (`https://whenisbins.com`) is a UK-wide service and AI agent API built by Public Digital that retrieves official household rubbish, recycling, food, and garden waste collection schedules across UK local authorities.
+**WhenIsBins** (`https://whenisbins.com`) provides a remote Model Context Protocol (MCP) server (`com.whenisbins/bin-collections`) that retrieves official household rubbish, recycling, food, and garden waste collection schedules across UK local authorities.
 
-- **API Guide**: `https://whenisbins.com/v1/guide`
-- **OpenAPI Docs**: `https://whenisbins.com/v1/docs`
-- **MCP Server**: `https://whenisbins.com/mcp`
-
----
-
-## 1. API Lookup Workflow (`https://whenisbins.com/v1`)
-
-### Step 1: Discover the Council & Property (`GET /v1/addresses`)
-Query the address discovery endpoint with a URL-encoded UK postcode:
-```text
-GET https://whenisbins.com/v1/addresses?postcode=<URL_ENCODED_POSTCODE>
-```
-**What it returns**:
-- `council`: The UK local authority responsible for waste collections at that postcode.
-- `required_input`: Any additional field required by that council (e.g., property selection or house number).
-- `candidates` / `input_options`: The list of matching residential addresses and their identifiers (`property_id` / `uprn`).
-
-**Rule**: Match the user's exact house number/street name against `candidates`. If ambiguous or missing, show the matching candidates and ask the user to confirm their address before proceeding.
+- **MCP Server Endpoint (Streamable HTTP)**: `https://whenisbins.com/mcp`
+- **MCP Namespace**: `com.whenisbins/bin-collections`
 
 ---
 
-### Step 2: Create or Retrieve a Schedule Lookup (`POST /v1/lookups` & `GET /v1/lookups/{lookup_id}`)
-Initiate a lookup for the matched property:
-```bash
-POST https://whenisbins.com/v1/lookups
-Content-Type: application/json
-Idempotency-Key: <UUID>
+## 1. MCP Server Configuration
 
+To connect an MCP-compatible client (such as Antigravity, Gemini CLI, Claude Code, or Cursor) to the WhenIsBins MCP server, register the remote Streamable HTTP endpoint in `mcp_config.json`:
+
+```json
 {
-  "postcode": "<POSTCODE>",
-  "property": "<PROPERTY_ID>"
+  "mcpServers": {
+    "whenisbins": {
+      "url": "https://whenisbins.com/mcp"
+    }
+  }
 }
 ```
-**Polling & Snapshot**:
-- Poll `GET https://whenisbins.com/v1/lookups/{lookup_id}/wait` (or `GET https://whenisbins.com/v1/lookups/{lookup_id}`) until the status completes.
-- The response returns a `collections` array containing each waste stream/bin colour, container description, and upcoming collection date, along with the official council source link.
+
+No API key or user authentication is required for personal use.
 
 ---
 
-## 2. Calculating Upcoming Dates from Saved Schedule Memory
+## 2. MCP Tool Workflow
 
-When a user's schedule (`collections` dates and repeat intervals, such as weekly `7` days, fortnightly `14` days, 3-weekly `21` days, or 4-weekly `28` days) is already saved in **Gemini Memory / Saved Info** and a live `POST` call cannot be made from the current interface:
+The `whenisbins` MCP server exposes four tools that work in sequence to resolve an address and retrieve its upcoming bin collections:
 
-1. Check if `GET https://whenisbins.com/v1/lookups/{lookup_id}` is available using a saved `lookup_id`.
-2. Otherwise, for each bin/container stored in Memory, roll its last known `anchor_date` forward by its `cycle_days` (`7`, `14`, `21`, or `28` days) until `next_date >= today` (Europe/London time):
-   - `cycles_elapsed = ceil((today - anchor_date).days / cycle_days)`
-   - `next_date = anchor_date + (cycles_elapsed * cycle_days)`
+### Step 1: Resolve the Property (`find_addresses`)
+Call `find_addresses` with the user's UK `postcode` (and house number/name if supported by the tool input schema):
+- **What it returns**:
+  - `council`: The UK local authority responsible for waste collections at that postcode.
+  - `required_input`: Any additional field required by that council.
+  - `candidates` / `input_options`: Matching residential addresses and their identifiers (`property_id` / `uprn`).
+- **Rule**: Match the user's exact house number or house name against the returned candidates. If multiple candidates match (e.g., subdivided flats), list the matching addresses in plain text and ask the user to confirm which one is theirs before proceeding.
+
+### Step 2: Initiate Collection Lookup (`get_collections`)
+Call `get_collections` using the `postcode` and the matched `property` (`property_id` / `uprn`) from `find_addresses`:
+- **What it returns**:
+  - Either the completed `collections` array immediately, or an asynchronous `lookup_id` with a status indicator (e.g., `still_working` or `partial`) while the council schedule is being fetched.
+
+### Step 3: Poll Asynchronous Lookups (`check_lookup`)
+If `get_collections` returns an in-progress lookup (`still_working` or `partial`):
+- Call `check_lookup` passing the `lookup_id` until the lookup status settles (`settled` / completed) and returns the full `collections` array.
+- Each item in `collections` includes the bin/container name or colour, waste stream description, and next collection date.
+
+### Step 4: Fast Repeat Lookups (`get_schedule`)
+Once a user's `property_id` has been resolved and saved in Memory:
+- On future requests, call `get_schedule` with the saved `property_id` to retrieve the stored collection schedule directly.
+- If the cached schedule is expired or unavailable, fall back to `get_collections` (and `check_lookup` if needed) using the saved `postcode` and `property_id`.
+
+---
+
+## 3. Data Handling & User Experience Rules
+
+- **Never send users to external URLs**: All address discovery and schedule lookups must happen through the MCP tools above. Never ask the user to visit `whenisbins.com` or their council website, and omit source URLs from your final response unless explicitly requested.
+- **Timezone**: Always evaluate "Today" and "Tomorrow" relative to `Europe/London` local time.
+- **Same-day collections**: Multiple bins are frequently collected on the same day. Always group every bin/container sharing the earliest upcoming collection date under **Bins to Put Out**.

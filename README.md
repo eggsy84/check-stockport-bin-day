@@ -1,24 +1,24 @@
 # Check UK Bin Day (`what-bin-day-is-it`)
 
-A zero-config **Google Gemini Skill** for **any UK address**, structured according to Google's official guidance ([Write effective skills for Gemini Apps](https://support.google.com/gemini/answer/17102773)) and powered by **[WhenIsBins (`whenisbins.com`)](https://whenisbins.com)**.
+A zero-config **Agent Skill** for **any UK address**, powered by the **[WhenIsBins (`whenisbins.com`)](https://whenisbins.com)** MCP server (`https://whenisbins.com/mcp`).
 
-Once added to your Google account, you can ask Gemini:
+Once installed alongside the WhenIsBins MCP server, you can ask:
 - *"What bin day is it?"*
 - *"What bin should I put out?"*
 - *"When is bin day?"*
 
-Gemini will return a concise message telling you when your next collection day is and which bin(s) to put out.
+The agent will prompt for your UK postcode and house number on first use, query the WhenIsBins MCP server directly, and return a concise message telling you when your next collection day is and which bin(s) to put out — without you ever having to visit a website yourself.
 
 ---
 
 ## How It Works
 
-1. **UK-Wide Coverage via WhenIsBins (`whenisbins.com`)**:
-   Uses [WhenIsBins](https://whenisbins.com) (`https://whenisbins.com/v1/guide` and `https://whenisbins.com/mcp`) to look up official local council waste and recycling schedules for any UK postcode and address.
-2. **Zero-Config Onboarding via Gemini Memory**:
-   You do not need to edit [`SKILL.md`](./SKILL.md) before uploading. On first use, Gemini asks for your UK postcode and house number (or your initial schedule from `whenisbins.com`) and saves your details to **Gemini's Memory / Saved Info** so it remembers them automatically in every future chat.
-3. **Direct Chat Response**:
-   Returns a clean, structured message in chat showing your **Next Bin Day**, **Bins to Put Out**, and **Upcoming After That** — with no calendar setup required.
+1. **UK-Wide Coverage via the WhenIsBins MCP Server (`https://whenisbins.com/mcp`)**:
+   Uses the WhenIsBins MCP tools (`find_addresses`, `get_collections`, `check_lookup`, and `get_schedule`) to look up official local council waste and recycling schedules for any UK postcode and house number.
+2. **Zero-Config Onboarding via Memory**:
+   You do not need to edit [`SKILL.md`](./SKILL.md) before installing. On first use, the agent asks for your UK postcode and house number and saves your resolved `property_id` to **Memory / Saved Info** so it remembers your address automatically in future chats.
+3. **Direct Chat Response (No URLs to Visit)**:
+   Returns a clean, structured message in chat showing your **Next Bin Day**, **Bins to Put Out**, and **Upcoming After That** — with no websites to visit and no calendar setup required.
 
 ---
 
@@ -28,44 +28,47 @@ Gemini will return a concise message telling you when your next collection day i
 what-bin-day-is-it/
 ├── SKILL.md                          # Main skill manifest (YAML frontmatter + instructions)
 ├── references/
-│   └── whenisbins-api-guide.md       # Reference guide: WhenIsBins /v1 API & schedule math
+│   └── whenisbins-api-guide.md       # Reference guide: WhenIsBins MCP server & tool workflow
 ├── README.md                         # Setup and usage documentation
 └── LICENSE                           # Repository license
 ```
 
-*(Note: If you rename the repository folder to `check-bin-day` or `check-uk-bin-day`, update `name:` on line 2 of `SKILL.md` to match the folder name before uploading to Gemini.)*
+---
+
+## Step 1: Configure the WhenIsBins MCP Server
+
+Add the `whenisbins` remote MCP server (`https://whenisbins.com/mcp`) to your client's MCP configuration (for example, `~/.gemini/config/mcp_config.json` in Antigravity / Gemini CLI):
+
+```json
+{
+  "mcpServers": {
+    "whenisbins": {
+      "url": "https://whenisbins.com/mcp"
+    }
+  }
+}
+```
 
 ---
 
-## Step 1: Install into Your Google Gemini Account
+## Step 2: Install the Skill
 
-1. Go to **[gemini.google.com](https://gemini.google.com)**.
-2. In the left sidebar, select **Customize** (or **More → Customize**), then click **Skills**.
-3. Click **Create** (or **Add**) and select **Upload**.
-4. Upload the skill using either method:
-   - **Upload `SKILL.md` & Reference File**: Select [`SKILL.md`](./SKILL.md), then attach [`references/whenisbins-api-guide.md`](./references/whenisbins-api-guide.md) under reference files.
-   - **Upload as a `.zip`**: Package only `SKILL.md` and `references/` (excluding `.git` and `LICENSE`, which Gemini rejects as unsupported file types):
-     ```bash
-     zip -r what-bin-day-is-it.zip SKILL.md references/ -x "*.DS_Store"
-     ```
-     Then upload `what-bin-day-is-it.zip` in the Gemini upload dialog.
-5. Click **Create**.
-
----
-
-## Step 2: How to Use It in Gemini
-
-1. Ask Gemini in any chat:
-   - *"What bin day is it?"*
-   - *"What bin should I put out?"*
-   - *"When is bin day?"*
-2. On your first ask, Gemini will ask for your UK postcode and house number/address and save your schedule details to **Gemini's Memory / Saved Info**.
-3. From then on, Gemini replies immediately with your next collection day and which bin(s) to put out.
-
----
-
-## Optional: Install via Gemini CLI
+### Option A: Gemini CLI / Antigravity
+Install the skill repository directly:
 
 ```bash
 gemini skills install https://github.com/eggsy84/what-bin-day-is-it.git
 ```
+
+Or copy this folder into `~/.gemini/config/skills/what-bin-day-is-it/` (global) or `.agents/skills/what-bin-day-is-it/` (workspace).
+
+---
+
+## Step 3: How to Use It
+
+1. Ask in any chat:
+   - *"What bin day is it?"*
+   - *"What bin should I put out?"*
+   - *"When is bin day?"*
+2. On your first ask, the agent will prompt you for your **UK postcode and house number/name**, resolve your property via the WhenIsBins MCP server, and save your details to **Memory / Saved Info**.
+3. From then on, the agent replies immediately with your next collection day and which bin(s) to put out.
