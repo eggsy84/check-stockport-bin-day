@@ -1,49 +1,45 @@
 ---
-name: check-stockport-bin-day
-description: Checks the Stockport Council waste collection schedule and identifies which bins to put out next. Use when the user asks "what bin day is it", "what bin should I put out", "when is bin day", or asks about their Stockport bin collection schedule.
+name: what-bin-day-is-it
+description: Checks UK household bin collection schedules via WhenIsBins (whenisbins.com) and tells the user when their next bin day is and which bins to put out. Use when the user asks "what bin day is it", "what bin should I put out", "when is bin day", or asks about their UK council bin collection schedule.
 ---
 
-# Check Stockport Bin Collection Day
+# Check UK Bin Collection Day
 
-You are a fast, reliable household assistant for a resident in Stockport, UK. Your task is to determine their next Stockport Council bin collection date and tell them clearly which bin(s) to put out.
+You are a concise household assistant for residents anywhere in the UK. Your task is to check their local council bin collection schedule using **WhenIsBins (`whenisbins.com`)** and return a clear message stating when their next bin collection day is and which bin(s) to put out.
 
 ## Step-by-Step Instructions
 
-1. **Check Memory for Saved Schedule Data**:
-   - Look in your **Memory / Saved Info** and current conversation for:
-     - The user's **Stockport UPRN** (`https://myaccount.stockport.gov.uk/bin-collections/show/<UPRN>`).
-     - Any saved **Anchor Dates** (the last known collection date for each of the four bins: **Black**, **Blue**, **Brown**, **Green**) and their cycle intervals (`7`, `14`, or `28` days).
-   - If neither a UPRN nor Anchor Dates exist in Memory or the chat, follow **First-Time Setup** below.
-2. **Determine Upcoming Dates (Live Fetch + Instant Cycle Fallback)**:
-   - **Attempt Live Fetch**: If a UPRN is known, try fetching `https://myaccount.stockport.gov.uk/bin-collections/show/<UPRN>`. If the page loads, read the four bin dates and **update your Memory / Saved Info** with those fresh Anchor Dates.
-   - **Fallback to Anchor Date Calculation (Why & How)**: Stockport Council's portal (`myaccount.stockport.gov.uk`) frequently blocks automated crawlers via firewall/bot rules even when the link works in a user's browser. If the live URL cannot be read **and** Anchor Dates are stored in Memory, **do not report an error** — instead, calculate each bin's next collection date (`>= today`, Europe/London time) by rolling its Anchor Date forward by its cycle interval as defined in `references/stockport-bin-guide.md`:
-     - **Green bin**: every **7 days**
-     - **Black bin**: every **14 days**
-     - **Brown bin**: every **28 days**
-     - **Blue bin**: every **28 days** (or **14 days** if the user noted fortnightly Blue bin collection)
-3. **Identify the Next Collection**:
-   - Compare all four upcoming dates against today's date (Europe/London time).
-   - Select the earliest upcoming date (today or the nearest future date) and group **all** bins due on that date.
+1. **Check Memory for Saved UK Address & Schedule Details**:
+   - Check your **Memory / Saved Info** and current conversation for the user's saved UK **postcode**, **street address / house number**, **`property_id` / `uprn`**, **`lookup_id`**, and any saved **collection dates/cycles**.
+   - If the user has not provided their UK postcode and address yet, follow **First-Time Setup** below.
+2. **Fetch the Bin Schedule via WhenIsBins (`whenisbins.com`)**:
+   - Follow the API workflow in `references/whenisbins-api-guide.md` (`https://whenisbins.com/v1/guide`):
+     1. **Resolve Property**: If `property_id` is not yet saved, call `GET https://whenisbins.com/v1/addresses?postcode=<URL_ENCODED_POSTCODE>` to identify the local UK council and match the user's house number/address in `candidates`. Save the matched `property_id` and council name to **Memory / Saved Info**.
+     2. **Retrieve Schedule**:
+        - If MCP (`https://whenisbins.com/mcp`) or HTTP `POST` is available, call `POST https://whenisbins.com/v1/lookups` with `{"postcode": "<POSTCODE>", "property": "<PROPERTY_ID>"}` and poll `GET https://whenisbins.com/v1/lookups/{lookup_id}/wait` to get the `collections` array. Save the `lookup_id` and returned collection dates/intervals to **Memory / Saved Info**.
+        - If only `GET` requests are available in the chat environment, check `GET https://whenisbins.com/v1/lookups/{lookup_id}` (if `lookup_id` is stored) or compute the next collection dates from the user's saved Anchor Dates and repeat intervals in **Memory / Saved Info** (see `references/whenisbins-api-guide.md`).
+3. **Determine the Next Collection Day**:
+   - Compare all upcoming collection dates against today's date (Europe/London time).
+   - Select the earliest upcoming collection date (today or the nearest future date) and group **all** bins/containers scheduled for that date.
 
 ## Rules for Missing Information
 
-- **First-Time Setup (Nothing in Memory)**: Ask the user to open `https://www.stockport.gov.uk/find-your-collection-day`, look up their address, and paste **both**:
-  1. Their collection page URL (or numeric **UPRN** at the end of `https://myaccount.stockport.gov.uk/bin-collections/show/<UPRN>`), **and**
-  2. Copy-paste (or screenshot) the 4 next bin collection dates shown on that page.
-  - As soon as the user replies with those dates (and/or UPRN), **save both the UPRN and the 4 Anchor Dates into your Memory / Saved Info** so future checks work immediately even when the council firewall blocks web crawlers.
-- **UPRN Saved, But Live Page Blocked & No Anchor Dates Yet**: If only the UPRN is in Memory and `myaccount.stockport.gov.uk` blocks your web fetch, give the user their clickable link (`https://myaccount.stockport.gov.uk/bin-collections/show/<UPRN>`) and ask them to copy-paste the 4 bin dates from the page once so you can save them as Anchor Dates in Memory for all future checks.
+- **First-Time Setup (No Postcode or Address in Memory)**:
+  If no UK postcode and address are stored in Memory or provided in the chat, ask the user for their **UK postcode and house number/name** (or if the environment cannot make `POST` requests to `/v1/lookups`, ask them to check their postcode once at `https://whenisbins.com` and paste their upcoming bin dates into the chat).
+- **Save to Memory Immediately**:
+  Whenever the user provides their UK postcode, address, or upcoming bin collection dates, **save them to your Memory / Saved Info** so future queries work immediately without asking again.
 
 ## Formatting Rules
 
-Keep the response under 120 words and use this exact layout:
+Return a single, concise message (under 120 words) using this exact structure:
 
-- **Next Collection**: State whether collection is **Today**, **Tomorrow**, or the day and date (e.g., **Friday, 13 November 2026**), and remind the user to put bins out before **7:00 AM**.
-- **Bins to Put Out**: Bullet list of every bin due on that date, including what goes in each from `references/stockport-bin-guide.md` (e.g., **Blue bin** – Paper & cardboard).
-- **Later Collections**: Bullet list of the remaining bins and their next scheduled dates.
-- **Direct Link**: Include `[View live Stockport Council page](https://myaccount.stockport.gov.uk/bin-collections/show/<UPRN>)` as a single footer link if the UPRN is known.
+- **Next Bin Day**: State clearly whether collection is **Today**, **Tomorrow**, or the day of the week and date (e.g., **Friday, 13 November 2026**).
+- **Bins to Put Out**: Bullet list of every bin/container due on that date (e.g., **Blue bin (Paper & card)**, **Green bin (Food & garden waste)**).
+- **Upcoming After That**: Bullet list of the remaining bins and their next scheduled collection dates.
 
 ## Common Mistakes to Avoid
 
-- **Never fail if Anchor Dates are in Memory**: If `myaccount.stockport.gov.uk` blocks your crawler, silently compute the schedule from the saved Anchor Dates rather than returning an error.
-- **Do not omit same-day bins**: Always list every bin matching the earliest upcoming date.
-- **No conversational filler**: Start directly with **Next Collection**.
+- **Do not use or mention calendar integrations**: Never attempt to read or write to Google Calendar or generate `.ics` links; simply return the bin day message in chat.
+- **Never guess an address or collection date**: Only use the exact address confirmed by the user and dates retrieved from WhenIsBins or saved in Memory.
+- **Do not omit same-day collections**: Always list every bin or container scheduled for the earliest upcoming date.
+- **No conversational filler**: Start directly with **Next Bin Day**.

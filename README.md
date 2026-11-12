@@ -1,21 +1,24 @@
-# Check Stockport Bin Day (`check-stockport-bin-day`)
+# Check UK Bin Day (`check-stockport-bin-day`)
 
-A zero-config **Google Gemini Skill** structured according to Google's official guidance ([Write effective skills for Gemini Apps](https://support.google.com/gemini/answer/17102773)).
+A zero-config **Google Gemini Skill** for **any UK address**, structured according to Google's official guidance ([Write effective skills for Gemini Apps](https://support.google.com/gemini/answer/17102773)) and powered by **[WhenIsBins (`whenisbins.com`)](https://whenisbins.com)**.
 
 Once added to your Google account, you can ask Gemini:
 - *"What bin day is it?"*
 - *"What bin should I put out?"*
 - *"When is bin day?"*
 
+Gemini will return a concise message telling you when your next collection day is and which bin(s) to put out.
+
 ---
 
-## Why This Skill Uses Hybrid Live-Fetch + Memory Anchor Dates
+## How It Works
 
-Stockport Council's portal (`myaccount.stockport.gov.uk/bin-collections/show/<UPRN>`) uses bot/firewall rules and `noindex` headers that frequently block automated AI web crawlers — even when the link opens fine in your personal browser.
-
-To make responses **fast and 100% reliable**, this skill uses a two-layer approach:
-1. **Live Fetch (When Accessible)**: Gemini checks `https://myaccount.stockport.gov.uk/bin-collections/show/<UPRN>` and refreshes your saved schedule in **Gemini's Memory / Saved Info**.
-2. **Instant Anchor-Date Calculation (When Crawler Is Blocked)**: Because Stockport bin collections follow fixed repeating intervals from any known collection date (**Green**: every 7 days, **Black**: every 14 days, **Brown**: every 28 days, **Blue**: every 28 or 14 days), Gemini stores one snapshot of your 4 bin dates in **Memory** and calculates your upcoming collections mathematically whenever `myaccount.stockport.gov.uk` blocks automated crawlers.
+1. **UK-Wide Coverage via WhenIsBins (`whenisbins.com`)**:
+   Uses [WhenIsBins](https://whenisbins.com) (`https://whenisbins.com/v1/guide` and `https://whenisbins.com/mcp`) to look up official local council waste and recycling schedules for any UK postcode and address.
+2. **Zero-Config Onboarding via Gemini Memory**:
+   You do not need to edit [`SKILL.md`](./SKILL.md) before uploading. On first use, Gemini asks for your UK postcode and house number (or your initial schedule from `whenisbins.com`) and saves your details to **Gemini's Memory / Saved Info** so it remembers them automatically in every future chat.
+3. **Direct Chat Response**:
+   Returns a clean, structured message in chat showing your **Next Bin Day**, **Bins to Put Out**, and **Upcoming After That** — with no calendar setup required.
 
 ---
 
@@ -25,10 +28,12 @@ To make responses **fast and 100% reliable**, this skill uses a two-layer approa
 check-stockport-bin-day/
 ├── SKILL.md                          # Main skill manifest (YAML frontmatter + instructions)
 ├── references/
-│   └── stockport-bin-guide.md        # Reference guide: bin colours, cycle math & UPRN lookup
+│   └── whenisbins-api-guide.md       # Reference guide: WhenIsBins /v1 API & schedule math
 ├── README.md                         # Setup and usage documentation
 └── LICENSE                           # Repository license
 ```
+
+*(Note: If you rename the repository folder to `check-bin-day` or `check-uk-bin-day`, update `name:` on line 2 of `SKILL.md` to match the folder name before uploading to Gemini.)*
 
 ---
 
@@ -38,7 +43,7 @@ check-stockport-bin-day/
 2. In the left sidebar, select **Customize** (or **More → Customize**), then click **Skills**.
 3. Click **Create** (or **Add**) and select **Upload**.
 4. Upload the skill using either method:
-   - **Upload `SKILL.md` & Reference File**: Select [`SKILL.md`](./SKILL.md), then attach [`references/stockport-bin-guide.md`](./references/stockport-bin-guide.md) under reference files.
+   - **Upload `SKILL.md` & Reference File**: Select [`SKILL.md`](./SKILL.md), then attach [`references/whenisbins-api-guide.md`](./references/whenisbins-api-guide.md) under reference files.
    - **Upload as a `.zip`**: Package only `SKILL.md` and `references/` (excluding `.git` and `LICENSE`, which Gemini rejects as unsupported file types):
      ```bash
      zip -r check-stockport-bin-day.zip SKILL.md references/ -x "*.DS_Store"
@@ -48,10 +53,19 @@ check-stockport-bin-day/
 
 ---
 
-## Step 2: One-Time Onboarding in Chat
+## Step 2: How to Use It in Gemini
 
-1. Ask Gemini: *"What bin day is it?"* (or type `/check-stockport-bin-day`).
-2. Gemini will prompt you to open [stockport.gov.uk/find-your-collection-day](https://www.stockport.gov.uk/find-your-collection-day) and paste:
-   - Your property URL (e.g. `https://myaccount.stockport.gov.uk/bin-collections/show/10090543805`), **and**
-   - A quick copy-paste (or screenshot) of the 4 upcoming bin dates displayed on that page.
-3. Gemini saves both your **UPRN** and those **4 Anchor Dates** into **Gemini's Memory / Saved Info**. From that point on, every time you ask *"What bin should I put out?"*, Gemini answers immediately — even if Stockport Council's firewall blocks web crawlers.
+1. Ask Gemini in any chat:
+   - *"What bin day is it?"*
+   - *"What bin should I put out?"*
+   - *"When is bin day?"*
+2. On your first ask, Gemini will ask for your UK postcode and house number/address and save your schedule details to **Gemini's Memory / Saved Info**.
+3. From then on, Gemini replies immediately with your next collection day and which bin(s) to put out.
+
+---
+
+## Optional: Install via Gemini CLI
+
+```bash
+gemini skills install https://github.com/eggsy84/stockport-bin-skill.git
+```
